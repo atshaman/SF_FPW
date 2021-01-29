@@ -4,7 +4,6 @@
 
 import cat
 
-sam = cat.Cat('m', 2, 'сэм')
-baron = cat.Cat('m', 2, 'барон')
-print(sam.get_info())
-print(baron.get_info())
+cats = [cat.Cat('m', 2, 'сэм'), cat.Cat('m', 2, 'барон')]
+for i in cats:
+    print(i.get_info())

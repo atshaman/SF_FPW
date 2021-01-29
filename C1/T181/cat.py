@@ -4,7 +4,7 @@
 
 
 class Cat():
-    __genders = {'male': 0, 'm': 0, 'мужской': 0, 'м': 0, 'female': 1, 'f': 1, 'женский': 1, 'ж': 1}
+    _genders = {'male': 0, 'm': 0, 'мужской': 0, 'м': 0, 'female': 1, 'f': 1, 'женский': 1, 'ж': 1}
 
     def __init__(self, gender, age, name):
         self.gender = gender
@@ -14,16 +14,16 @@ class Cat():
     @property
     def gender(self):
         if self._gender == 0:
-            return 'Мужской'
+            return 'мужской'
         else:
-            return 'Женский'
+            return 'женский'
 
     @gender.setter
     def gender(self, value):
         try:
-            self._gender = self.__genders[value.lower()]
+            self._gender = self._genders[value.lower()]
         except KeyError:
-            print('Пол должен быть одним из: ' + '/'.join(list(self.__genders.keys())))
+            print('Пол должен быть одним из: ' + '/'.join(list(self._genders.keys())))
 
     @property
     def age(self):
