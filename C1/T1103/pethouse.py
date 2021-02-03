@@ -29,8 +29,7 @@ class User:
 
 class Client(User):
     def __init__(self, name, surname, bill=0):
-        self.name = name
-        self.surname = surname
+        User.__init__(self, name, surname)
         self.bill = bill
 
     @property

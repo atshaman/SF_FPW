@@ -63,8 +63,7 @@ class Rectangle:
 
 class Square(Rectangle):
     def __init__(self, side, x=1, y=1):
-        self.width = self.height = side
-        self.x, self.y = x, y
+        Rectangle.__init__(self, side, side, x, y)
 
     def __str__(self):
         return '{}({}, {}, {})'.format(self.__class__.__name__, self._x, self._y, self._width)
