@@ -5,6 +5,7 @@
 
 class Address(dict):
     def __init__(self, city=None, street=None, house=None):
+        dict.__init__(self)
         self['city'] = city
         self['street'] = street
         self['house'] = house
@@ -81,7 +82,7 @@ class Employee(User):
             exit(-1)
 
     def __str__(self):
-        return f'Работник {self.name} {self.surname}. Адрес - {self.address}. Статус {self.state}'
+        return f'Работник {self.name} {self.surname}. Адрес - {self.address}. Статус {"Работник" if self.state else "Наставник"}'
 
 
 class People:
