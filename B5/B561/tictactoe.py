@@ -3,46 +3,51 @@
 """Описание классов для итогового практического задания по модулю B5"""
 import random
 import os
-import os.path
 import collections
-import pickle
 
 
 class Field:
-    _values = {'0': 0, '1': 1, 'x': 1, 'o': 0, 0: 'o', 1: 'x'}
+    _values = {'0': 0, '1': 1, 'x': 1, 'o': 0, 0: 'x', 1: '0'}
 
-    def __init__(self, choice=None):
+    def __init__(self, choice=None, mode=1, scroll=False):
         self._field = [None for i in range(9)]
         self._values['2'] = random.randint(0, 1)
+        self.mode = mode
         self.choice = choice
+        self.scroll = scroll
+
+    def greet(self):
+        print(
+            'Доброе пожаловать в игру крестики-нолики. Игра запускается в следующих режимах: 1 - игра с комьютером, 0 - hot-seat, 3 - автотест')
 
     def flash(self):
         """Сброс состояния """
-        self.__init__(self)
+        self.__init__(self, mode=self.mode)
 
     def draw(self):
         """Прорисовка поля с очисткой экрана """
-        os.system('cls||clear')
+        if not self.scroll:
+            os.system('cls||clear')
         print('  0 1 2')
         for num, line in enumerate([self._field[i * 3:i * 3 + 3] for i in range(len(self._field) // 3)]):
             print(num, ' '.join([self._values.get(x, '-') for x in line]))
 
-    def mk_turn(self):
+    def mk_turn(self, turn):
         """Ход компьютера """
         # Чуть менее наивная реализация, позволяет обойтись без проверки занятости клетки
         if self._field[4] is None:
             self._field[4] = 1 if not self.choice else 0
         else:
             self._field[
-                random.choice([x for x, y in enumerate(self._field) if y is None])] = 1 if not self.choice else 0
+                random.choice([x for x, y in enumerate(self._field) if y is None])] = turn % 2
 
-    def get_turn(self):
+    def get_turn(self, turn):
         """Ход человека, поддерживается ввод с пробелом и без"""
         while True:
             try:
                 x, y = [int(x) for x in input('Введите координаты следующего хода:\n').replace(' ', '')]
                 if self._field[y * 3 + x] is None:
-                    self._field[y * 3 + x] = self.choice
+                    self._field[y * 3 + x] = turn % 2
                     break
                 else:
                     print("Клетка {x}:{y} занята!")
@@ -52,9 +57,9 @@ class Field:
     def chk_condition(self):
         """Проверка условия победы """
         # Оптимальным в данном случае была бы последовательная проверка всех прямых в матрице
-        #Диагонали
-        scores = [[0, 4, 8], [2, 4, 6]]
-        #Вертикали+горизонтали
+        # Диагонали
+        scores = [self._field[::4], self._field[2:7:2]]
+        # Вертикали+горизонтали
         for i in range(len(self._field) // 3):
             scores.append(self._field[i * 3:i * 3 + 3])
             scores.append(self._field[i::3])
@@ -84,9 +89,12 @@ class Field:
             for i in range(9):
                 print(f'Ход номер {i}')
                 if (i % 2 and not self.choice) or (not i % 2 and self.choice):
-                    self.get_turn()
+                    if self.mode != 3:
+                        self.get_turn(i)
+                    else:
+                        self.mk_turn(i)
                 else:
-                    self.mk_turn()
+                    self.mk_turn(i)
                 self.draw()
                 if self.chk_condition() is not None:
                     print(f'На {i} ходу победили {self._values[self.chk_condition()]}')
@@ -96,14 +104,7 @@ class Field:
             self.flash()
             self.choice = None
 
-    def save(self):
-        pass
-
-    def load(self):
-        pass
-
 
 if __name__ == '__main__':
-    field = Field()
+    field = Field(mode=0)
     field.run()
-
