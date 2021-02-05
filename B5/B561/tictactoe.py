@@ -20,10 +20,6 @@ class Field:
         print(
             'Доброе пожаловать в игру крестики-нолики. Игра запускается в следующих режимах: 1 - игра с комьютером, 0 - hot-seat, 3 - автотест')
 
-    def flash(self):
-        """Сброс состояния """
-        self.__init__(self, mode=self.mode)
-
     def draw(self):
         """Прорисовка поля с очисткой экрана """
         if not self.scroll:
@@ -36,7 +32,7 @@ class Field:
         """Ход компьютера """
         # Чуть менее наивная реализация, позволяет обойтись без проверки занятости клетки
         if self._field[4] is None:
-            self._field[4] = 1 if not self.choice else 0
+            self._field[4] = turn % 2
         else:
             self._field[
                 random.choice([x for x, y in enumerate(self._field) if y is None])] = turn % 2
@@ -45,12 +41,19 @@ class Field:
         """Ход человека, поддерживается ввод с пробелом и без"""
         while True:
             try:
-                x, y = [int(x) for x in input('Введите координаты следующего хода:\n').replace(' ', '')]
-                if self._field[y * 3 + x] is None:
-                    self._field[y * 3 + x] = turn % 2
+                index = input(
+                    "Введите координаты следующего хода (Допускаются координаты в форматах 'xy', 'x y', 'N' - номер ячейки):\n")
+                if len(index) == 1:
+                    index = int(index)
+                elif len(index) == 2:
+                    index = int(index[0]) + int(index[1]) * 3
+                else:
+                    index = int(index.replace(' ', '')[0]) + int(index.replace(' ', '')[1]) * 3
+                if self._field[index] is None:
+                    self._field[index] = turn % 2
                     break
                 else:
-                    print("Клетка {x}:{y} занята!")
+                    print(f"Клетка {index - (index // 3 * 3)}:{index // 3} занята!")
             except ValueError:
                 print('Необходимо ввести координаты x, y в диапазоне от 0 до 2!')
 
@@ -75,10 +78,27 @@ class Field:
         while True:
             try:
                 self.choice = self._values[input(
-                    'Выберите кто будет играть за X, 1 - игрок, 0 - компьютер, 2 - случайный выбор:\n')]
+                    'Выберите кто будет играть за X, 1|x - игрок, 0|o - компьютер, 2 - случайный выбор:\n')]
                 break
             except KeyError:
                 print('Допустимые значения "0|o", "1|x", "2"')
+
+    def round(self):
+        for i in range(9):
+            print(f'Ход номер {i}')
+            if (i % 2 and not self.choice) or (not i % 2 and self.choice):
+                if self.mode != 3:
+                    self.get_turn(i)
+                else:
+                    self.mk_turn(i)
+            else:
+                self.mk_turn(i)
+            self.draw()
+            if self.chk_condition() is not None:
+                print(f'На {i} ходу победили {self._values[self.chk_condition()]}')
+                break
+        else:
+            print("Ничья!")
 
     def run(self):
         """Главный цикл программы """
@@ -86,23 +106,8 @@ class Field:
             if not self.choice:
                 self.getfirst()
             self.draw()
-            for i in range(9):
-                print(f'Ход номер {i}')
-                if (i % 2 and not self.choice) or (not i % 2 and self.choice):
-                    if self.mode != 3:
-                        self.get_turn(i)
-                    else:
-                        self.mk_turn(i)
-                else:
-                    self.mk_turn(i)
-                self.draw()
-                if self.chk_condition() is not None:
-                    print(f'На {i} ходу победили {self._values[self.chk_condition()]}')
-                    break
-            else:
-                print("Ничья!")
-            self.flash()
-            self.choice = None
+            self.round()
+            self.__init__(self, mode=self.mode, scroll=self.scroll)
 
 
 if __name__ == '__main__':
