@@ -5,12 +5,13 @@ import random
 
 
 class Point:
+    # 0 - пусто, 1 - часть корабля, 2 - попадание, 3 - промах
     _states = {0: "0", 1: "■", 2: "X", 3: "T"}
 
     def __init__(self, x=0, y=0, status=0):
         self.x = x
         self.y = y
-        self.status = status
+        self._status = status
 
     @property
     def status(self):
@@ -54,12 +55,13 @@ class Point:
 
 
 class Ship:
-    _points = []
 
     def __init__(self, x=0, y=0, rotation=0, size=1):
         # 0 - корабль расположен горизонтально, 1 - вертикально
+        self._points = []
         self.rotation = rotation
         self.size = size
+        self._dead = False
         for i in range(size):
             self._points.append(
                 Point(
@@ -69,17 +71,23 @@ class Ship:
                 )
             )
 
+    @property
+    def dead(self):
+        if all(self._points.status == 2):
+            self._dead = True
+            return True
+
     def near(self, point):
         # И снова фу-ф-фу, нечитаемо
         if (self._points[0].x - 1 <= point[0] <= self._points[-1].x + 1) and (
-            self._points[0].y - 1 <= point[1] <= self._points[-1].y + 1
+                self._points[0].y - 1 <= point[1] <= self._points[-1].y + 1
         ):
             return True
         else:
             return False
 
     def __contains__(self, item):
-        # Можно через арифметику с х\у и обобщить с near, но пока "И так сойдет!"
+        # Можно через арифметику с х\у и обобщить с near, но "И так сойдет!"
         if item in self._points:
             return True
         else:
@@ -90,56 +98,99 @@ class Ship:
 
 
 class Field:
-    _field = []  # Не нужно
-    _ships = [Ship(0, 0, 0, 3)]
-    _checked = []
 
-    def __init__(self, size=6, ships={}, own=True):
+    def __init__(self, size=6, ships={3: 1, 2: 2, 1: 4}, own=True):
         self.size = size
         self.own = own
+        self._ships = []
+        self._checked = []
+        for i in sorted(ships.keys(), reverse=True):
+            for j in range(ships[i]):
+                self.setships(i)
 
-    def getships(self):
-        pass
-
-    def setships(self):
-        pass
+    def setships(self, decks):
+        print(decks)
 
     def check(self, point):
+        # Проверяем координаты точки
+        # Если поле наше (own) показываем корабли и проверенные поля. В противном случае только checked
         for i in self._ships:
             if point in i:
                 return self._ships.index(i)
         return False
 
+    def getfree(self):
+        # Возвращаем множество свободных ячеек поля
+        return set()
+
+    def checkwin(self):
+        # Проверяем не окончилась ли игра
+        if all(self._ships.dead):
+            return True
+        else:
+            return False
+
     def drawlines(self):
-        yield "  " + " ".join([i for i in range(self.size)])
+        yield "  " + " ".join([str(i) for i in range(self.size)])
         for y in range(self.size):
-            result = " "
+            result = str(y)
             for x in range(self.size):
-                if not self.check(x, y):
-                    result += " 0 "
+                if not self.check((x, y)):
+                    result += " 0"
+                else:
+                    result += f' {str(self._ships[self.check((x, y))])}'
             yield result
 
 
 class Battle:
-    def __init__(self):
-        pass
+    def __init__(self, first=True, size=6, auto=False, fleet={3: 1, 2: 2, 1: 4}):
+        self.first = first
+        self.fleet = fleet
+        self.size = size
+        # Очередность хода. Левое поле всегда первое
+        if auto:
+            self._fields = (Field(self.size, self.fleet, True), Field(self.size, self.fleet, True))
+        elif self.first:
+            self._fields = (Field(self.size, self.fleet, True), Field(self.size, self.fleet, False))
+        else:
+            self._fields = (Field(self.size, self.fleet, False), Field(self.size, self.fleet, True))
 
-    def getfire(self):
-        pass
+    def shot(self, field):
+        if self._fields[field].own:
+            self._fields[field]._checked.append(random.choice(self._fields[field].getfree()))
+        else:
+            while True:
+                coordinates = input('Введите координаты цели!')
+                x, y = coordinates.split()
+                if (int(x), int(y)) in self._fields[field].getfree:
+                    self._fields[field]._checked.append(Point(x, y))
+                    break
+                else:
+                    print('Точка занята')
 
-    def setfire(self):
-        pass
+    def round(self):
+        # Поочередные ходы чет\нечет, после каждого хода проверяется условие победы и рисуется поле
+        for i in self.size ** 2 * 2:
+            self.draw()
+            if i % 2:
+                self.shot(0)
+                if self._fields[0].checkwin():
+                    return 0
+            else:
+                self.shot(1)
+                if self._fields[1].checkwin():
+                    return 1
+
+    def draw(self):
+        for i in zip(self._fields[0].drawlines(), self._fields[1].drawlines()):
+            print(f'{i[0]}    |    {i[1]}')
 
     def run(self):
         while True:
-            winner = self.turn()
+            winner = self.round()
             print(f"And the winner is... {winner}")
 
 
 if __name__ == "__main__":
-    # t = Field()
-    # print(t.draw())
-    test = Ship(2, 2, 1, 3)
-    print(test.near((5, 4)))
-    """battle = Battle()
-    battle.run()"""
+    battle = Battle()
+    battle.draw()
