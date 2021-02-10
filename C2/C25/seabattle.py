@@ -62,7 +62,8 @@ class Ship:
         self._points = []
         self.rotation = rotation
         self.size = size
-        self._dead = False
+        # 0 - жив, 1 - ранен, 2 - убит
+        self._status = 0
         for i in range(size):
             self._points.append(
                 Point(
@@ -73,10 +74,17 @@ class Ship:
             )
 
     @property
-    def dead(self):
-        if not self.dead and all([x.status == 4 for x in self._points]):
-            self._dead = True
-        return self._dead
+    def status(self):
+        if self._status == 2:
+            return self._status
+        elif self._status == 1:
+            if all([x.status == 4 for x in self._points]):
+                self._status = 2
+                print(f'Корабль с координатами {self.coordinates()} уничтожен!')
+        else:
+            if any([x.status == 4 for x in self._points]):
+                self._status = 1
+        return self._status
 
     def near(self):
         # Возвращаем множество точек рядом
@@ -96,6 +104,12 @@ class Ship:
             if i == (x, y):
                 return str(i)
 
+    def setpoint(self, x, y):
+        for i in self._points:
+            if i == (x, y):
+                i.setstatus()
+                return i
+
     def coordinates(self):
         return [(p.x, p.y) for p in self._points]
 
@@ -105,17 +119,20 @@ class Ship:
 
 class Field:
 
-    def __init__(self, size=6, ships={3: 1, 2: 2, 1: 4}, own=True):
+    def __init__(self, size=6, ships={3: 1, 2: 2, 1: 4}, own=2, fleet=None):
         self.size = size
-        # Own - принадлежит человеку
+        # Own - принадлежит человеку, 1 - да, 2 автобой, 0 - компьютер
         self.own = own
         self._ships = []
         self._checked = []
-        for i in sorted(ships.keys(), reverse=True):
-            for j in range(ships[i]):
-                self._ships.append(self.setships(i))
-                if self.own == 1:
-                    for k in self.drawlines(): print(k)
+        if not fleet:
+            for i in sorted(ships.keys(), reverse=True):
+                for j in range(ships[i]):
+                    self._ships.append(self.setships(i))
+                    if self.own == 1:
+                        for k in self.drawlines(): print(k)
+        else:
+            self._ships += fleet
 
     def setships(self, decks):
         free = self.getfree()
@@ -125,15 +142,15 @@ class Field:
                 if self.own != 1:
                     ship = Ship(*random.choice(free), random.randint(0, 1), decks)
                 else:
-                    print(f'Введите координаты левой верхней точки {decks}-клеточного корабля')
+                    print(f'Введите координаты левой верхней точки {decks}-клеточного корабля\n')
                     x, y = self.getcoordinates()
                     if decks != 1:
-                        orientatiton = input('Укажите ориентацию корабля: 0 - горизонтально, 1 - вертикально')
+                        orientatiton = input('Укажите ориентацию корабля: 0 - горизонтально, 1 - вертикально\n')
                     else:
                         orientatiton = decks
                     if int(orientatiton) not in (0, 1):
                         raise Exception('Положение корабля может быть горизонтальным (0) или вертикальным (1)!')
-                    ship = Ship(x, y, random.randint(0, 1), decks)
+                    ship = Ship(x, y, orientatiton, decks)
                 if all([x in free for x in ship.coordinates()]):
                     return ship
                 else:
@@ -149,21 +166,25 @@ class Field:
         for i in self._ships:
             if self.own in (1, 2) and point in i:
                 return self._ships.index(i)
-        if point in self._checked:
-            return self._checked.index(point)
         return None
 
     def getfree(self):
         # Возвращаем множество свободных ячеек поля
         result = set([(x, y) for x in range(self.size) for y in range(self.size)])
-        bisy = set([(p.x, p.y) for p in self._checked])
+        # Два раза в одно место стрелять нельзя никому
+        busy = set([(p.x, p.y) for p in self._checked])
         for i in self._ships:
-            bisy.update(i.near())
-        return list(result.difference(bisy))
+            # Первоначальная расстановка
+            if len(self._checked) == 0:
+                busy.update(i.near())
+            # Если поле принадлежит компьютеру - не стреляем около убитых кораблей. Игрок имет право быть идиотом.
+            elif i.status == 2 and self.own != 1:
+                busy.update(i.near())
+        return list(result.difference(busy))
 
     def checkwin(self):
         # Проверяем не окончилась ли игра
-        if all(self._ships.dead):
+        if all([x.status == 2 for x in self._ships]):
             return True
         else:
             return False
@@ -174,52 +195,68 @@ class Field:
             result = str(y)
             for x in range(self.size):
                 if self.check((x, y)) is None:
-                    result += " 0"
+                    if (x, y) not in self._checked:
+                        result += " 0"
+                    else:
+                        result += " T"
                 else:
                     result += f' {self._ships[self.check((x, y))].getpoint(x, y)}'
             yield result
 
     def getcoordinates(self):
         while True:
-            coordinates = input('Введите координаты!')
+            coordinates = input('Введите координаты!\n')
             try:
                 x, y = coordinates.split()
                 if not (0 <= int(x) <= self.size or 0 <= int(y) <= self.size):
-                    raise Exception(f'Координаты не могут выходить за пределы поля - 0, {self.size}')
+                    raise Exception(f'Координаты не могут выходить за пределы поля - 0, {self.size}\n')
                 if (int(x), int(y)) not in self._checked:
                     return (int(x), int(y))
                 else:
                     print('Точка занята')
             except ValueError:
-                print('Координаты задаются в виде двух чисел, разделенных пробелом')
+                print('Координаты задаются в виде двух чисел, разделенных пробелом\n')
             except Exception as err:
                 # И опять фу-фу-фу, слишком общее исключение
                 print(err)
 
 
 class Battle:
-    def __init__(self, first=1, size=7, fleet={3: 1, 2: 2, 1: 4}):
+    def __init__(self, first=1, size=7, ships={3: 1, 2: 2, 1: 4}, fleet=None):
         self.first = first
-        self.fleet = fleet
+        self.ships = ships
         self.size = size
         # Очередность хода. Левое поле всегда первое
         if self.first == 2:
-            self._fields = (Field(self.size, self.fleet, 2), Field(self.size, self.fleet, 2))
+            self._fields = (Field(self.size, self.ships, 2), Field(self.size, self.ships, 2))
         elif self.first == 1:
-            self._fields = (Field(self.size, self.fleet, 1), Field(self.size, self.fleet, 0))
+            self._fields = (Field(self.size, self.ships, 1, fleet), Field(self.size, self.ships, 0))
         else:
-            self._fields = (Field(self.size, self.fleet, 0), Field(self.size, self.fleet, 1))
+            self._fields = (Field(self.size, self.ships, 0), Field(self.size, self.ships, 1, fleet))
 
     def shot(self, field):
-        if not self._fields[field].own:
-            self._fields[field]._checked.append(random.choice(self._fields[field].getfree()))
+        if self._fields[field].own in (1, 2):
+            # Тут бы нарисовать вместо свирепого рандома что-нибудь более приличное для раненых кораблей, но времени нет
+            x, y = random.choice(self._fields[field].getfree())
         else:
-            x, y = self._fields[field].getcoordinates()
+            while True:
+                x, y = self._fields[field].getcoordinates()
+                if (x, y) in self._fields[field]._checked:
+                    print('Нельзя дважды стрелять в одно место!\n')
+                else:
+                    break
+        if self._fields[field].check((x, y)) is not None:
+            self._fields[field]._checked.append(
+                self._fields[field]._ships[self._fields[field].check((x, y))].setpoint(x, y))
+        else:
+            self._fields[field]._checked.append(Point(x, y, 1))
+        print(f'Выстрел по координатам {x},{y}\n')
 
     def round(self):
         # Поочередные ходы чет\нечет, после каждого хода проверяется условие победы и рисуется поле
-        for i in self.size ** 2 * 2:
-            self.draw()
+        self.draw()
+        for i in range(self.size ** 2 * 2):
+            print(i)
             if i % 2:
                 self.shot(0)
                 if self._fields[0].checkwin():
@@ -228,8 +265,12 @@ class Battle:
                 self.shot(1)
                 if self._fields[1].checkwin():
                     return 1
+            print(f'Ход номер {i}\n')
+            self.draw()
 
     def draw(self):
+        print(
+            f'{"Комьютер" if self._fields[0].own != 1 else "Человек"}               {"Комьютер" if self._fields[1].own != 1 else "Человек"}')
         for i in zip(self._fields[0].drawlines(), self._fields[1].drawlines()):
             print(f'{i[0]}    |    {i[1]}')
 
@@ -240,5 +281,6 @@ class Battle:
 
 
 if __name__ == "__main__":
-    battle = Battle(first=2)
-    battle.draw()
+    battle = Battle(first=2, fleet=[Ship(0, 0, 1, 3), Ship(2, 2, 0, 2), Ship(3, 4, 1, 2), Ship(0, 2, 0), Ship(0, 4, 0),
+                                    Ship(0, 6, 0), Ship(6, 6, 0)])
+    battle.run()
