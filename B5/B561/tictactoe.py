@@ -3,14 +3,14 @@
 """Описание классов для итогового практического задания по модулю B5"""
 import random
 import os
-import collections
 
 
 class Field:
-    _values = {'0': 0, '1': 1, 'x': 1, 'o': 0, 0: 'x', 1: '0'}
+    _values = {'0': 1, '1': -1, 'x': -1, 'o': 1, -1: 'x', 1: '0'}
 
     def __init__(self, choice=None, mode=1, scroll=False):
-        self._field = [None for i in range(9)]
+        # 0 обозначается -1, Х - единицей
+        self._field = [0 for i in range(9)]
         self._values['2'] = random.randint(0, 1)
         self.mode = mode
         self.choice = choice
@@ -29,13 +29,14 @@ class Field:
             print(num, ' '.join([self._values.get(x, '-') for x in line]))
 
     def mk_turn(self, turn):
+        #TODO computer turn zero
         """Ход компьютера """
         # Чуть менее наивная реализация, позволяет обойтись без проверки занятости клетки
-        if self._field[4] is None:
-            self._field[4] = turn % 2
+        if self._field[4] == 0:
+            self._field[4] = self._values[str(turn % 2)]
         else:
             self._field[
-                random.choice([x for x, y in enumerate(self._field) if y is None])] = turn % 2
+                random.choice([x for x, y in enumerate(self._field) if y == 0])] = self._values[str(turn % 2)]
 
     def get_turn(self, turn):
         """Ход человека, поддерживается ввод с пробелом и без"""
@@ -49,8 +50,8 @@ class Field:
                     index = int(index[0]) + int(index[1]) * 3
                 else:
                     index = int(index.replace(' ', '')[0]) + int(index.replace(' ', '')[1]) * 3
-                if self._field[index] is None:
-                    self._field[index] = turn % 2
+                if self._field[index] == 0:
+                    self._field[index] = self.choice
                     break
                 else:
                     print(f"Клетка {index - (index // 3 * 3)}:{index // 3} занята!")
@@ -61,16 +62,15 @@ class Field:
         """Проверка условия победы """
         # Оптимальным в данном случае была бы последовательная проверка всех прямых в матрице
         # Диагонали
-        scores = [self._field[::4], self._field[2:7:2]]
+        scores = [sum(self._field[::4]), sum(self._field[2:7:2])]
         # Вертикали+горизонтали
         for i in range(len(self._field) // 3):
-            scores.append(self._field[i * 3:i * 3 + 3])
-            scores.append(self._field[i::3])
-        for score in map(collections.Counter, scores):
-            if score[1] == 3:
-                return 1
-            elif score[0] == 3:
-                return 0
+            scores.append(sum(self._field[i * 3:i * 3 + 3]))
+            scores.append(sum(self._field[i::3]))
+        if any([x == -3 for x in scores]):
+            return -1
+        elif any([x == 3 for x in scores]):
+            return 1
         return None
 
     def getfirst(self):
@@ -82,17 +82,19 @@ class Field:
                 break
             except KeyError:
                 print('Допустимые значения "0|o", "1|x", "2"')
+        print(self.choice)
 
     def round(self):
         for i in range(9):
             print(f'Ход номер {i}')
-            if (i % 2 and not self.choice) or (not i % 2 and self.choice):
+            if (not i % 2 and self.choice == -1) or (i % 2 and self.choice == 1):
                 if self.mode != 3:
                     self.get_turn(i)
                 else:
                     self.mk_turn(i)
             else:
                 self.mk_turn(i)
+            print(self._field)
             self.draw()
             if self.chk_condition() is not None:
                 print(f'На {i} ходу победили {self._values[self.chk_condition()]}')
@@ -107,7 +109,7 @@ class Field:
                 self.getfirst()
             self.draw()
             self.round()
-            self.__init__(self, mode=self.mode, scroll=self.scroll)
+            Field.__init__(self, mode=self.mode, scroll=self.scroll)
 
 
 if __name__ == '__main__':
