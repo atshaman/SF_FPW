@@ -77,10 +77,9 @@ class Ship:
     def status(self):
         if self._status == 2:
             return self._status
-        elif self._status == 1:
-            if all([x.status == 4 for x in self._points]):
-                self._status = 2
-                print(f'Корабль с координатами {self.coordinates()} уничтожен!')
+        if all([x.status == 4 for x in self._points]):
+            self._status = 2
+            print(f'Корабль с координатами {self.coordinates()} уничтожен!')
         else:
             if any([x.status == 4 for x in self._points]):
                 self._status = 1
@@ -161,10 +160,9 @@ class Field:
                     print(err)
 
     def check(self, point):
-        # Проверяем координаты точки
-        # Если поле наше (own) показываем корабли и проверенные поля. В противном случае только checked
+        # Проверяем координаты точки, возвращаем None или индекс точки в корабле
         for i in self._ships:
-            if self.own in (1, 2) and point in i:
+            if point in i:
                 return self._ships.index(i)
         return None
 
@@ -194,13 +192,17 @@ class Field:
         for y in range(self.size):
             result = str(y)
             for x in range(self.size):
+                elem = " 0"
                 if self.check((x, y)) is None:
-                    if (x, y) not in self._checked:
-                        result += " 0"
-                    else:
-                        result += " T"
+                    if (x, y) in self._checked:
+                        elem = " T"
                 else:
-                    result += f' {self._ships[self.check((x, y))].getpoint(x, y)}'
+                    if self.own in (1, 2):
+                        elem = f' {self._ships[self.check((x, y))].getpoint(x, y)}'
+                    else:
+                        if (x, y) in self._checked:
+                            elem = f' {self._ships[self.check((x, y))].getpoint(x, y)}'
+                result += elem
             yield result
 
     def getcoordinates(self):
@@ -253,18 +255,12 @@ class Battle:
         print(f'Выстрел по координатам {x},{y}\n')
 
     def round(self):
-        # Поочередные ходы чет\нечет, после каждого хода проверяется условие победы и рисуется поле
+        # Поочередные ходы чет\нечет, после проверки условий победы делается выстрел и рисуется поле
         self.draw()
         for i in range(self.size ** 2 * 2):
-            print(i)
-            if i % 2:
-                self.shot(0)
-                if self._fields[0].checkwin():
-                    return 0
-            else:
-                self.shot(1)
-                if self._fields[1].checkwin():
-                    return 1
+            self.shot(i % 2)
+            if self._fields[i % 2].checkwin():
+                return i % 2
             print(f'Ход номер {i}\n')
             self.draw()
 
@@ -278,6 +274,11 @@ class Battle:
         while True:
             winner = self.round()
             print(f"And the winner is... {winner}")
+            exit = input('Нажмите любую кнопку для продолжения, 0 для выхода\n')
+            if exit == '0':
+                break
+            else:
+                self.__init__(first=self.first, size=self.size, ships=self.ships)
 
 
 if __name__ == "__main__":
