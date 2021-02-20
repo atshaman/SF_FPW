@@ -6,7 +6,7 @@ import os
 
 
 class Field:
-    _values = {'0': 1, '1': -1, 'x': -1, 'o': 1, -1: 'x', 1: '0'}
+    _values = {'0': 1, 1: 'X', 'o': 1, '1': -1, 'x': -1, -1: '0'}
 
     def __init__(self, choice=None, mode=1, scroll=False):
         # 0 обозначается -1, Х - единицей
@@ -29,7 +29,6 @@ class Field:
             print(num, ' '.join([self._values.get(x, '-') for x in line]))
 
     def mk_turn(self, turn):
-        #TODO computer turn zero
         """Ход компьютера """
         # Чуть менее наивная реализация, позволяет обойтись без проверки занятости клетки
         if self._field[4] == 0:
@@ -51,12 +50,14 @@ class Field:
                 else:
                     index = int(index.replace(' ', '')[0]) + int(index.replace(' ', '')[1]) * 3
                 if self._field[index] == 0:
-                    self._field[index] = self.choice
+                    self._field[index] = self._values[str(turn % 2)]
                     break
                 else:
                     print(f"Клетка {index - (index // 3 * 3)}:{index // 3} занята!")
             except ValueError:
                 print('Необходимо ввести координаты x, y в диапазоне от 0 до 2!')
+            except IndexError:
+                print('Размеры поля ограничены 3*3!')
 
     def chk_condition(self):
         """Проверка условия победы """
@@ -82,12 +83,11 @@ class Field:
                 break
             except KeyError:
                 print('Допустимые значения "0|o", "1|x", "2"')
-        print(self.choice)
 
     def round(self):
         for i in range(9):
             print(f'Ход номер {i}')
-            if (not i % 2 and self.choice == -1) or (i % 2 and self.choice == 1):
+            if (i % 2 and self.choice == 1) or (not i % 2 and self.choice == -1):
                 if self.mode != 3:
                     self.get_turn(i)
                 else:
@@ -113,5 +113,5 @@ class Field:
 
 
 if __name__ == '__main__':
-    field = Field(mode=0)
+    field = Field(mode=3, scroll=True)
     field.run()
