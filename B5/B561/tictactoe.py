@@ -59,6 +59,11 @@ class Field:
             except IndexError:
                 print('Размеры поля ограничены 3*3!')
 
+    def score(self):
+        """По умолчанию score каждой клетки - 0. За принадлежность к пустой линии - +=1
+        Если в линии есть еще один 'наш' элемент - +2, если в линии есть наш и не наш - линия =0 """
+        pass
+
     def chk_condition(self):
         """Проверка условия победы """
         # Оптимальным в данном случае была бы последовательная проверка всех прямых в матрице
@@ -78,8 +83,16 @@ class Field:
         """Определение очередности хода """
         while True:
             try:
-                self.choice = self._values[input(
-                    'Выберите кто будет играть за X, 1|x - игрок, 0|o - компьютер, 2 - случайный выбор:\n')]
+                choice = input(
+                    'Выберите кто будет играть за X, 1|x - игрок, 0|o - компьютер, 2 - случайный выбор, 3 - автоигра, Q|q - выход:\n')
+                if choice.lower() == '3':
+                    self.choice = 1
+                    self.mode = 3
+                elif choice.lower() == 'q':
+                    exit(0)
+                else:
+                    self.choice = self._values[choice]
+                    self.mode = 0
                 break
             except KeyError:
                 print('Допустимые значения "0|o", "1|x", "2"')
