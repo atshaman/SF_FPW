@@ -22,26 +22,26 @@ class GetCurrency:
               'MXN': "Mexican Peso", 'ILS': "Israeli New Shekel", 'GBP': "British Pound Sterling",
               'KRW': "South Korean Won", 'MYR': "Malaysian Ringgit", 'EUR': "Euro"}
     REVERSE = {x[1].replace(' ', '').upper(): x[0] for x in VALUES.items()}
+    URL = 'https://api.exchangeratesapi.io'
 
     def __init__(self, cache=None):
-        self.url = 'https://api.exchangeratesapi.io'
-        if cache:
+        if cache is not None:
             self.cache = datetime.timedelta(seconds=cache)
             self.refresh()
         else:
-            self.cache = None
+            self.cache = cache
 
     def refresh(self):
-        self.refresh = datetime.datetime.now()
+        self.refreshtime = datetime.datetime.now()
         try:
-            self.cvalues = requests.get(self.url + '/latest').json()['rates']
+            self.cvalues = requests.get(GetCurrency.URL + '/latest').json()['rates']
         except Exception:
             print('Ошибка получения данных о курсе валют по сети!')
         # Явным образом добавляем базу рассчета
         self.cvalues['EUR'] = 1
 
     def get_price_cache(self, base: str, quote: str, amount: int) -> float:
-        if (self.cache is None) or (datetime.datetime.now() - self.refresh > self.cache):
+        if (self.cache is None) or (datetime.datetime.now() - self.refreshtime > self.cache):
             self.refresh()
         # Ищем в UPPERCASE и без пробелов
         base = self.REVERSE.get(base.upper().replace(' ', ''), base.upper().replace(' ', ''))
@@ -50,8 +50,10 @@ class GetCurrency:
             raise ApiException(f'Базовая валюта {base} отсутствует в списке доступных для конвертации!')
         if self.cvalues.get(quote.upper(), None) is None:
             raise ApiException(f'Результирующая валюта {quote} отсутствует в списке доступных для конвертации!')
-        if amount <= 0:
+        if not amount.strip().isdigit() or int(amount.strip()) <= 0:
             raise ApiException(f'Количество обмениваемой валюты должно быть целым положительным числом!')
+        else:
+            amount = int(amount.strip())
         base = self.cvalues.get(base)
         quote = self.cvalues.get(quote)
         return amount / base * quote
@@ -77,14 +79,13 @@ class TgBot:
                 self.greet(message.chat.id)
             elif message.text.startswith('/convert'):
                 try:
-                    command = message.text.strip('/convert').split(',')
+                    command = message.text.replace('/convert ', '').split(',')
                     if len(command) != 3:
                         raise ApiException(
                             'Запрос на конвертацию принимает три параметра - исходную валюту, конечную и количество, разделенные запятыми')
                     else:
                         self.bot.send_message(message.chat.id,
-                                              self.changer.get_price_cache(command[0], command[1],
-                                                                           int(command[2])))
+                                              self.changer.get_price_cache(*command))
                 except ApiException as err:
                     self.bot.reply_to(message, f'Ошибка пользователя! {err}\n')
                 except Exception as err:
@@ -97,8 +98,8 @@ class TgBot:
 
     def greet(self, id):
         self.bot.send_message(id, 'Здравствуйте. Вас приветствует конвертер валют. '
-                                  'Для запроса курса валют воспользуйтесь командой /convert, '
-                                  'для получения списка валют, в отношении которых возможна конвертация - /values')
+                                  'Для запроса курса валют воспользуйтесь командой /convert исходная валюта, целевая валюта, количество. '
+                                  'Для получения списка валют, в отношении которых возможна конвертация - /values')
 
 
 if __name__ == '__main__':
