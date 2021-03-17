@@ -10,13 +10,14 @@ class Field:
 
     def __init__(self, choice=None, mode=1, scroll=False):
         # 0 обозначается -1, Х - единицей
-        self._field = [0 for i in range(9)]
+        self._field = [0]*9
         self._values['2'] = random.randint(0, 1)
         self.mode = mode
         self.choice = choice
         self.scroll = scroll
 
-    def greet(self):
+    @staticmethod
+    def greet():
         print(
             'Доброе пожаловать в игру крестики-нолики. Игра запускается в следующих режимах: 1 - игра с комьютером, 0 - hot-seat, 3 - автотест')
 
